@@ -43,6 +43,9 @@ class IncrementalSitesProvisioner implements IncrementalProvisionerInterface {
 		if ( ! $this->enabled ) {
 			return;
 		}
+		if ( ! search_api_available( $this->search_api, sprintf( 'Site ADD - Site ID: %d', $site->blog_id ) ) ) {
+			return;
+		}
 		error_log( sprintf( '[CC-Client] Site provisioning ADD - Site ID: %d, Domain: %s', $site->blog_id, $site->domain ) );
 		$provisionable_site = new ProvisionableSite( $site );
 		$indexed_document = $this->search_api->index( $provisionable_site->toDocument() );
@@ -56,6 +59,9 @@ class IncrementalSitesProvisioner implements IncrementalProvisionerInterface {
 
 	public function provisionUpdatedSite( \WP_Site $site ) {
 		if ( ! $this->enabled ) {
+			return;
+		}
+		if ( ! search_api_available( $this->search_api, sprintf( 'Site UPDATE - Site ID: %d', $site->blog_id ) ) ) {
 			return;
 		}
 		error_log( sprintf( '[CC-Client] Site provisioning UPDATE - Site ID: %d, Domain: %s', $site->blog_id, $site->domain ) );
@@ -80,6 +86,9 @@ class IncrementalSitesProvisioner implements IncrementalProvisionerInterface {
 
 	public function provisionDeletedSite( \WP_Site $site ) {
 		if ( ! $this->enabled ) {
+			return;
+		}
+		if ( ! search_api_available( $this->search_api, sprintf( 'Site DELETE - Site ID: %d', $site->blog_id ) ) ) {
 			return;
 		}
 		$provisionable_site = new ProvisionableSite( $site );
@@ -117,6 +126,9 @@ class IncrementalSitesProvisioner implements IncrementalProvisionerInterface {
 		$new_visibility = intval( $new_value );
 
 		$site = get_site();
+		if ( ! search_api_available( $this->search_api, sprintf( 'Site VISIBILITY CHANGE - Site ID: %d', $site->blog_id ) ) ) {
+			return;
+		}
 		error_log( sprintf( '[CC-Client] Site provisioning VISIBILITY CHANGE - Site ID: %d, Domain: %s, Old: %s, New: %s', $site->blog_id, $site->domain, $old_value, $new_value ) );
 		$provisionable_site = new ProvisionableSite( $site );
 		$provisionable_site->getSearchID();
@@ -152,6 +164,9 @@ class IncrementalSitesProvisioner implements IncrementalProvisionerInterface {
 			error_log( sprintf( '[CC-Client] Site provisioning SPAM DELETE FAILED - Site not found, Site ID: %d', $site_id ) );
 			return;
 		}
+		if ( ! search_api_available( $this->search_api, sprintf( 'Site SPAM DELETE - Site ID: %d', $site_id ) ) ) {
+			return;
+		}
 		error_log( sprintf( '[CC-Client] Site provisioning SPAM DELETE - Site ID: %d, Domain: %s', $site_id, $site->domain ) );
 		$provisionable_site = new ProvisionableSite( $site );
 		$provisionable_site->getSearchID();
@@ -178,6 +193,9 @@ class IncrementalSitesProvisioner implements IncrementalProvisionerInterface {
 		$site = get_site( $site_id );
 		if ( ! $site ) {
 			error_log( sprintf( '[CC-Client] Site provisioning UNSPAM RE-ADD FAILED - Site not found, Site ID: %d', $site_id ) );
+			return;
+		}
+		if ( ! search_api_available( $this->search_api, sprintf( 'Site UNSPAM RE-ADD - Site ID: %d', $site_id ) ) ) {
 			return;
 		}
 		error_log( sprintf( '[CC-Client] Site provisioning UNSPAM RE-ADD - Site ID: %d, Domain: %s', $site_id, $site->domain ) );

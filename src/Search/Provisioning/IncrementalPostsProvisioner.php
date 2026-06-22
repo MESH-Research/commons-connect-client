@@ -48,6 +48,9 @@ class IncrementalPostsProvisioner implements IncrementalProvisionerInterface {
 		if ( ! in_array( $post->post_type, $this->post_types ) ) {
 			return;
 		}
+		if ( ! search_api_available( $this->search_api, sprintf( 'Post ADD/UPDATE - Post ID: %d', $post_id ) ) ) {
+			return;
+		}
 		$provisionable_post = new ProvisionablePost( $post );
 		$provisionable_post->getSearchID();
 
@@ -82,6 +85,9 @@ class IncrementalPostsProvisioner implements IncrementalProvisionerInterface {
 		if ( ! in_array( $post->post_type, $this->post_types ) ) {
 			return;
 		}
+		if ( ! search_api_available( $this->search_api, sprintf( 'Post DELETE - Post ID: %d', $post_id ) ) ) {
+			return;
+		}
 		$provisionable_post = new ProvisionablePost( $post );
 		$search_id = $provisionable_post->getSearchID();
 		if ( empty( $search_id ) ) {
@@ -112,6 +118,9 @@ class IncrementalPostsProvisioner implements IncrementalProvisionerInterface {
 	 */
 	public function provisionPostsFromDeletedSite(\WP_Error $errors, \WP_Site $site) {
 		if ( ! $this->isEnabled() ) {
+			return;
+		}
+		if ( ! search_api_available( $this->search_api, sprintf( 'Posts DELETE ALL from site - Site ID: %d', $site->blog_id ) ) ) {
 			return;
 		}
 
@@ -165,6 +174,10 @@ class IncrementalPostsProvisioner implements IncrementalProvisionerInterface {
 	    if (!$site) {
 	        error_log( sprintf( '[CC-Client] Post provisioning RE-ADD from unspammed site FAILED - Site not found, Site ID: %d', $site_id ) );
 	        return;
+		}
+
+		if ( ! search_api_available( $this->search_api, sprintf( 'Posts RE-ADD from unspammed site - Site ID: %d', $site_id ) ) ) {
+			return;
 		}
 
 		error_log( sprintf( '[CC-Client] Post provisioning RE-ADD from unspammed site - Site ID: %d, Domain: %s', $site_id, $site->domain ) );

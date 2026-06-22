@@ -7,6 +7,40 @@
 
 namespace MeshResearch\CCClient\Search\Provisioning;
 
+use MeshResearch\CCClient\Search\SearchAPI;
+
+/**
+ * Timeout (in seconds) for the pre-flight reachability check.
+ *
+ * Deliberately short so that the happy path adds negligible overhead and the
+ * unhappy path (Search API unreachable) returns almost immediately instead of
+ * hanging the request.
+ */
+const SEARCH_API_PREFLIGHT_TIMEOUT = 2;
+
+/**
+ * Pre-flight check: is the Search API reachable before a synchronous provisioning call?
+ *
+ * Performs a fast ping with a short timeout. If the API is unreachable, the
+ * failure is written to the error log (so failed search registrations are
+ * visible) and the function returns false, allowing the caller to skip the
+ * blocking request rather than hang for the full client timeout.
+ *
+ * @param SearchAPI $search_api The Search API client.
+ * @param string    $context    Short description of the operation being attempted (for the log).
+ * @return bool True if the Search API responded, false if it is unreachable.
+ */
+function search_api_available( SearchAPI $search_api, string $context = '' ): bool {
+	if ( $search_api->ping( SEARCH_API_PREFLIGHT_TIMEOUT ) ) {
+		return true;
+	}
+	error_log( sprintf(
+		'[CC-Client] Search API UNREACHABLE - skipping provisioning. Search registration is FAILING. Context: %s',
+		$context !== '' ? $context : 'unknown operation'
+	) );
+	return false;
+}
+
 function get_profile_url( \WP_User $user ): string {
 	if ( 
 		! function_exists( 'bp_core_enable_root_profiles' ) || 

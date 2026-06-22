@@ -42,6 +42,9 @@ class IncrementalProfilesProvisioner implements IncrementalProvisionerInterface 
 		if ( ! $this->enabled ) {
 			return;
 		}
+		if ( ! search_api_available( $this->search_api, sprintf( 'Profile ADD/UPDATE - User ID: %d', $user_id ) ) ) {
+			return;
+		}
 		$user = get_userdata( $user_id );
 		error_log( sprintf( '[CC-Client] Profile provisioning ADD/UPDATE - User ID: %d, Username: %s, Email: %s', $user_id, $user->user_login, $user->user_email ) );
 		$provisionable_user = new ProvisionableProfile( $user );
@@ -74,6 +77,9 @@ class IncrementalProfilesProvisioner implements IncrementalProvisionerInterface 
 
 	public function provisionDeletedUser( $user_id ) {
 		if ( ! $this->enabled ) {
+			return;
+		}
+		if ( ! search_api_available( $this->search_api, sprintf( 'Profile DELETE - User ID: %d', $user_id ) ) ) {
 			return;
 		}
 		$user = get_userdata( $user_id );

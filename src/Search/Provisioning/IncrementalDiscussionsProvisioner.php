@@ -47,6 +47,9 @@ class IncrementalDiscussionsProvisioner implements IncrementalProvisionerInterfa
 		if ( ! in_array( $post->post_type, $this->incremental_posts_provisioner->post_types ) ) {
 			return;
 		}
+		if ( ! search_api_available( $this->search_api, sprintf( 'Discussion ADD/UPDATE - Post ID: %d', $post_id ) ) ) {
+			return;
+		}
 
 		$action = $update ? 'UPDATE' : 'ADD';
 		error_log( sprintf( '[CC-Client] Discussion provisioning %s - Post ID: %d, Type: %s, Title: %s', $action, $post_id, $post->post_type, $post->post_title ) );

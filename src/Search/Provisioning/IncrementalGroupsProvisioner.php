@@ -38,6 +38,9 @@ class IncrementalGroupsProvisioner implements IncrementalProvisionerInterface {
 		if ( ! $this->enabled ) {
 			return;
 		}
+		if ( ! search_api_available( $this->search_api, sprintf( 'Group ADD/UPDATE - Group ID: %d', $group->id ) ) ) {
+			return;
+		}
 		error_log( sprintf( '[CC-Client] Group provisioning ADD/UPDATE - Group ID: %d, Name: %s, Status: %s', $group->id, $group->name, $group->status ) );
 		$provisionable_group = new ProvisionableGroup( $group );
 		$provisionable_group->getSearchID();
@@ -69,6 +72,9 @@ class IncrementalGroupsProvisioner implements IncrementalProvisionerInterface {
 	}
 
 	public function provisionDeletedGroup( int $group_id ) {
+		if ( ! search_api_available( $this->search_api, sprintf( 'Group DELETE - Group ID: %d', $group_id ) ) ) {
+			return;
+		}
 		$group = new \BP_Groups_Group( $group_id );
 		error_log( sprintf( '[CC-Client] Group provisioning DELETE - Group ID: %d, Name: %s', $group_id, $group->name ) );
 		$provisionable_group = new ProvisionableGroup( $group );
