@@ -19,6 +19,14 @@ The Search block requires a running CommonsConnect search service:
 3. In the `cc-client` directory, run `lando wp cc search status` to verify that the plugin can connect to the search service.
 4. In the `cc-client` directory, run `lando wp cc search provision_test_docs` to load test data into the search service.
 
+## Configuration
+
+The Search API client timeouts and provisioning resilience behaviour are
+configurable via environment variables. See
+[docs/search-api-timeouts.md](docs/search-api-timeouts.md) for the available
+`CC_SEARCH_TIMEOUT` and `CC_SEARCH_CONNECT_TIMEOUT` settings and how the plugin
+avoids blocking the request when the Search API is unavailable.
+
 ## Running Tests
 
 Tests use the WordPress test functionality and PHPUnit. They require a running cc-search API. By default this is the local API running on `http://commonsconnect-search.lndo.site`.
