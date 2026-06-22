@@ -26,7 +26,9 @@ class SearchCommand {
 
 	public function __construct() {
 		$this->options = new CCClientOptions( incremental_provisioning_enabled: false);
-		$this->search_api = new SearchAPI( $this->options );
+		// WP-CLI runs long-lived batch operations where retrying connection errors and a
+		// generous timeout are appropriate, unlike interactive request-time provisioning.
+		$this->search_api = new SearchAPI( $this->options, retry_on_connect_error: true, request_timeout: 60 );
 	}
 	
 	/**

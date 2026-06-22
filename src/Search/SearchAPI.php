@@ -9,6 +9,7 @@ namespace MeshResearch\CCClient\Search;
 
 use Exception;
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Handler\CurlHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
@@ -25,8 +26,23 @@ class SearchAPI {
 	private $api_url;
 	private $admin_api_key;
 
+	/**
+	 * @param CCClientOptions $options                The plugin options.
+	 * @param bool            $retry_on_connect_error  Whether to retry requests that fail with a
+	 *                                                 connection error. This is appropriate for
+	 *                                                 long-running WP-CLI bulk operations, but should
+	 *                                                 be left off (the default) for interactive,
+	 *                                                 request-time provisioning so that an unreachable
+	 *                                                 Search API does not hang the user's request.
+	 * @param int|null        $request_timeout         Overrides the request timeout (in seconds).
+	 *                                                 When null, the configured
+	 *                                                 CCClientOptions::$cc_search_timeout is used.
+	 *                                                 Batch contexts may pass a longer value.
+	 */
 	public function __construct(
 		private CCClientOptions $options,
+		private bool $retry_on_connect_error = false,
+		private ?int $request_timeout = null,
 	) {
 		if ( empty($options->cc_search_key ) ) {
 			throw new \Exception('API key is required');
@@ -37,23 +53,34 @@ class SearchAPI {
 		}
 		$this->api_url = $options->cc_search_endpoint;
 		$this->admin_api_key = $options->cc_search_admin_key ?? '';
-		
+
+		$timeout = $this->request_timeout ?? $options->cc_search_timeout;
 		$handler_stack = HandlerStack::create(new CurlHandler());
 		$handler_stack->push($this->_retryMiddleware());
 		$this->client = new Client(
 			[
-				'handler' => $handler_stack,
-				'timeout' => 60,
+				'handler'         => $handler_stack,
+				'connect_timeout' => $options->cc_search_connect_timeout,
+				'timeout'         => $timeout,
 			]
 		);
 	}
 
 	/**
 	 * Ping the API to check if it is up
+	 *
+	 * @param int|null $timeout Optional per-request timeout (in seconds) for both the connection
+	 *                          and the response. Used for fast pre-flight reachability checks so
+	 *                          callers can bail out quickly when the Search API is unavailable.
 	 */
-	public function ping(): bool {
+	public function ping( ?int $timeout = null ): bool {
+		$request_options = [];
+		if ( $timeout !== null ) {
+			$request_options['connect_timeout'] = $timeout;
+			$request_options['timeout']         = $timeout;
+		}
 		try {
-			$response = $this->client->request('GET', $this->api_url . '/ping');
+			$response = $this->client->request('GET', $this->api_url . '/ping', $request_options);
 		} catch ( Exception $e ) {
 			return false;
 		}
@@ -309,6 +336,12 @@ class SearchAPI {
 				}
 
 				if ($error instanceof ConnectException) {
+					// Retrying connection errors is appropriate for long-running batch
+					// operations, but in interactive/request-time contexts it multiplies the
+					// blocking delay felt by the user, so it is opt-in.
+					if ( ! $this->retry_on_connect_error ) {
+						return false;
+					}
 					if ( class_exists('WP_CLI') ) {
 						\WP_CLI::warning('Connection error. Retrying...');
 					}

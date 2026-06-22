@@ -24,6 +24,10 @@ class SearchAPITest extends CCCTestCase
 		$this->assertTrue($this->search_api->ping());
 	}
 
+	public function test_ping_with_short_timeout(): void {
+		$this->assertTrue($this->search_api->ping(2));
+	}
+
 	public function test_index_document(): void {
 		$document_json = file_get_contents(__DIR__ . '/test-data/single_test_doc.json');
 		$document = SearchDocument::fromJSON( $document_json );

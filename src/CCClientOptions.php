@@ -14,6 +14,8 @@ class CCClientOptions {
 		public string      $cc_search_admin_key = '',
 		public bool | null $incremental_provisioning_enabled = null,
 		public int | null  $search_page_id = null,
+		public int         $cc_search_timeout = 5,
+		public int         $cc_search_connect_timeout = 3,
 	) {
 		$this->loadOptions(false);	
 	}
@@ -43,6 +45,12 @@ class CCClientOptions {
 		}
 		if ( getenv( 'CC_SEARCH_PAGE_ID' ) ) {
 			$this->search_page_id = (int) getenv( 'CC_SEARCH_PAGE_ID' );
+		}
+		if ( getenv( 'CC_SEARCH_TIMEOUT' ) ) {
+			$this->cc_search_timeout = (int) getenv( 'CC_SEARCH_TIMEOUT' );
+		}
+		if ( getenv( 'CC_SEARCH_CONNECT_TIMEOUT' ) ) {
+			$this->cc_search_connect_timeout = (int) getenv( 'CC_SEARCH_CONNECT_TIMEOUT' );
 		}
 	}
 
