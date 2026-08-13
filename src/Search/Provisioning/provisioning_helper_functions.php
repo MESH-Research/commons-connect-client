@@ -19,26 +19,59 @@ use MeshResearch\CCClient\Search\SearchAPI;
 const SEARCH_API_PREFLIGHT_TIMEOUT = 2;
 
 /**
+ * Per-request cache of pre-flight results, keyed by endpoint URL.
+ *
+ * A single request can fire several incremental provisioners (site, post,
+ * discussion), each of which performs a pre-flight check. Caching the result
+ * for the lifetime of the request means an unavailable Search API costs the
+ * pre-flight timeout once, not once per provisioner.
+ *
+ * @return array<string,bool> Reference to the cache.
+ */
+function &_search_api_available_cache(): array {
+	static $cache = [];
+	return $cache;
+}
+
+/**
  * Pre-flight check: is the Search API reachable before a synchronous provisioning call?
  *
  * Performs a fast ping with a short timeout. If the API is unreachable, the
  * failure is written to the error log (so failed search registrations are
  * visible) and the function returns false, allowing the caller to skip the
- * blocking request rather than hang for the full client timeout.
+ * blocking request rather than hang for the full client timeout. The result
+ * is cached per endpoint for the remainder of the request.
  *
  * @param SearchAPI $search_api The Search API client.
  * @param string    $context    Short description of the operation being attempted (for the log).
  * @return bool True if the Search API responded, false if it is unreachable.
  */
 function search_api_available( SearchAPI $search_api, string $context = '' ): bool {
-	if ( $search_api->ping( SEARCH_API_PREFLIGHT_TIMEOUT ) ) {
-		return true;
+	$cache    = &_search_api_available_cache();
+	$endpoint = $search_api->get_endpoint();
+	if ( isset( $cache[ $endpoint ] ) ) {
+		return $cache[ $endpoint ];
 	}
-	error_log( sprintf(
-		'[CC-Client] Search API UNREACHABLE - skipping provisioning. Search registration is FAILING. Context: %s',
-		$context !== '' ? $context : 'unknown operation'
-	) );
-	return false;
+	$available            = $search_api->ping( SEARCH_API_PREFLIGHT_TIMEOUT );
+	$cache[ $endpoint ]   = $available;
+	if ( ! $available ) {
+		error_log( sprintf(
+			'[CC-Client] Search API UNREACHABLE - skipping provisioning. Search registration is FAILING. Context: %s',
+			$context !== '' ? $context : 'unknown operation'
+		) );
+	}
+	return $available;
+}
+
+/**
+ * Reset the per-request pre-flight availability cache.
+ *
+ * Primarily for tests and long-running processes that want to re-probe the
+ * Search API after a known state change.
+ */
+function reset_search_api_available_cache(): void {
+	$cache = &_search_api_available_cache();
+	$cache = [];
 }
 
 function get_profile_url( \WP_User $user ): string {

@@ -29,11 +29,12 @@ class SearchAPI {
 	/**
 	 * @param CCClientOptions $options                The plugin options.
 	 * @param bool            $retry_on_connect_error  Whether to retry requests that fail with a
-	 *                                                 connection error. This is appropriate for
-	 *                                                 long-running WP-CLI bulk operations, but should
-	 *                                                 be left off (the default) for interactive,
-	 *                                                 request-time provisioning so that an unreachable
-	 *                                                 Search API does not hang the user's request.
+	 *                                                 connection error or a 5xx server error. This is
+	 *                                                 appropriate for long-running WP-CLI bulk
+	 *                                                 operations, but should be left off (the default)
+	 *                                                 for interactive, request-time provisioning so
+	 *                                                 that an unreachable or erroring Search API does
+	 *                                                 not hang the user's request in retry backoff.
 	 * @param int|null        $request_timeout         Overrides the request timeout (in seconds).
 	 *                                                 When null, the configured
 	 *                                                 CCClientOptions::$cc_search_timeout is used.
@@ -64,6 +65,13 @@ class SearchAPI {
 				'timeout'         => $timeout,
 			]
 		);
+	}
+
+	/**
+	 * The endpoint URL this client is configured against.
+	 */
+	public function get_endpoint(): string {
+		return $this->api_url;
 	}
 
 	/**
@@ -350,6 +358,14 @@ class SearchAPI {
 
 				if ($response) {
 					if ($response->getStatusCode() >= 500) {
+						// Like connection errors, server errors are only retried in
+						// batch contexts. A gateway with no healthy search backend
+						// answers 5xx quickly, and the retry backoff (1+2+3+4+5s)
+						// would otherwise block interactive requests for ~15 seconds
+						// per call — even the short pre-flight ping.
+						if ( ! $this->retry_on_connect_error ) {
+							return false;
+						}
 						if ( class_exists('WP_CLI') ) {
 							\WP_CLI::warning('Server error. Retrying...');
 						}

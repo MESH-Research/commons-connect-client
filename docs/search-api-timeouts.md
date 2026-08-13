@@ -48,13 +48,19 @@ variables are the intended way to tune them per environment.
 batch use via two constructor arguments:
 
 - `retry_on_connect_error` (default `false`) — whether to retry requests that
-  fail with a connection error.
+  fail with a connection error or a `5xx` server error.
 - `request_timeout` (default: the configured `CC_SEARCH_TIMEOUT`) — overrides
   the request timeout in seconds.
 
 **Interactive provisioning** (the default, used by the incremental provisioners
-and the REST search controller) runs with retries on connection errors turned
-off, so an unreachable API cannot multiply the delay felt by the user.
+and the REST search controller) runs with retries turned off entirely — both
+for connection errors and for `5xx` server errors — so an unreachable *or
+erroring* API cannot multiply the delay felt by the user. The `5xx` case
+matters in practice: a load balancer or gateway with no healthy search backend
+accepts the connection and answers `502`/`503` quickly, which bypasses the
+connection-error path. Retrying those responses would add the full retry
+backoff (1+2+3+4+5 = 15 seconds) to every provisioning call, including the
+short pre-flight ping.
 
 **WP-CLI commands** (`wp cc search ...`) construct the client with
 `retry_on_connect_error: true` and a long `request_timeout` of 60 seconds, so
@@ -73,6 +79,14 @@ fast `ping()` against the Search API using a short timeout
 - If the API is unreachable, the failure is written to the error log and the
   provisioner returns early **without** attempting the blocking index/update/
   delete request.
+
+The result of the pre-flight check is cached per endpoint for the remainder of
+the request. A single request can fire several incremental provisioners (for
+example, saving a forum post triggers the site, post, and discussion
+provisioners), and without the cache each one would pay the pre-flight timeout
+separately. With it, an unavailable Search API costs the pre-flight timeout at
+most once per request. `reset_search_api_available_cache()` clears the cache
+for long-running processes that need to re-probe.
 
 This means an unavailable Search API adds at most a couple of seconds to a
 request rather than minutes, and every skipped registration is recorded. Look
